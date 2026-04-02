@@ -12,36 +12,39 @@
         }
         body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Sidebar */
         #sidebar { width: 280px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .sidebar-header { padding: 25px; border-bottom: 1px solid var(--border); text-align: center; }
         .nav-links { flex: 1; overflow-y: auto; padding: 10px; }
-        .nav-item { padding: 12px; margin-bottom: 5px; border-radius: 6px; cursor: pointer; color: #8b949e; font-size: 0.9rem; transition: 0.2s; }
-        .nav-item:hover, .nav-item.active { background: #21262d; color: var(--accent); }
+        .nav-item { padding: 12px; margin-bottom: 5px; border-radius: 6px; cursor: pointer; color: #8b949e; font-size: 0.9rem; transition: 0.2s; border: 1px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: #21262d; color: var(--accent); border-color: var(--border); }
 
-        /* Main Content */
         #main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        header { padding: 15px 30px; background: var(--sidebar); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        header { padding: 15px 30px; background: var(--sidebar); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .content-body { padding: 30px; }
 
         .summary-card { background: linear-gradient(135deg, #161b22 0%, #21262d 100%); border: 1px solid var(--accent); padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .summary-value { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
 
+        .filter-box { margin-bottom: 20px; width: 100%; position: relative; }
+        .filter-box input { width: 100%; padding: 12px 15px; background: var(--sidebar); border: 1px solid var(--border); border-radius: 8px; color: white; box-sizing: border-box; outline: none; }
+        .filter-box input:focus { border-color: var(--accent); }
+
         table { width: 100%; border-collapse: collapse; background: var(--sidebar); border-radius: 8px; overflow: hidden; }
-        th { background: #21262d; color: var(--accent); text-align: left; padding: 12px; font-size: 0.75rem; border-bottom: 1px solid var(--border); }
+        th { background: #21262d; color: var(--accent); text-align: left; padding: 12px; font-size: 0.75rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
         td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
         .subtotal-row { background-color: rgba(0, 229, 255, 0.05); font-weight: bold; color: var(--accent); }
 
         .btn-group { display: flex; gap: 10px; }
-        .btn { border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn { border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-export { background: var(--success); color: white; }
         .btn-print { background: #5865f2; color: white; }
+        .btn:hover { filter: brightness(1.2); }
 
-        .upload-area { border: 2px dashed var(--accent); padding: 60px; text-align: center; border-radius: 12px; cursor: pointer; }
+        .upload-area { border: 2px dashed var(--accent); padding: 80px 20px; text-align: center; border-radius: 12px; cursor: pointer; background: rgba(0,229,255,0.02); }
         .hidden { display: none; }
 
         @media print {
-            #sidebar, header, .btn-group { display: none !important; }
+            #sidebar, header, .btn-group, .filter-box { display: none !important; }
             body { background: white; color: black; }
             .summary-card { border: 1px solid black; }
             table, th, td { border: 1px solid black; color: black; }
@@ -56,7 +59,7 @@
         <small style="opacity: 0.5;">DCOMP Manager v1.0</small>
     </div>
     <div class="nav-links" id="navLinks">
-        <div class="nav-item active" id="btn-home" onclick="showPage('home')">Importar Planilha</div>
+        <div class="nav-item active" id="btn-home" onclick="showPage('home')">🏠 Importar / Geral</div>
     </div>
 </aside>
 
@@ -64,19 +67,28 @@
     <header>
         <h3 id="pageTitle">Início</h3>
         <div class="btn-group">
-            <button id="btnPrint" class="btn btn-print hidden" onclick="window.print()">Imprimir Relatório</button>
-            <button id="btnDownloadAll" class="btn btn-export hidden" onclick="exportExcelFullLayout()">Exportar Excel</button>
+            <button id="btnPrint" class="btn btn-print hidden" onclick="window.print()">Imprimir</button>
+            <button id="btnDownloadAll" class="btn btn-export hidden" onclick="exportExcelFullLayout()">Exportar Tudo</button>
         </div>
     </header>
 
     <div class="content-body">
         <div id="page-home" class="page">
-            <div class="upload-area" id="dropZone">
+            <div id="uploadBox" class="upload-area">
                 <h2>Selecione o arquivo Master</h2>
                 <p>Arraste o arquivo .xlsx ou clique para buscar</p>
                 <input type="file" id="fileInput" hidden accept=".xlsx, .xls">
             </div>
+
+            <div id="dashboardGeral" class="hidden">
+                <div id="totalGlobalCard"></div>
+                <div class="filter-box">
+                    <input type="text" id="mainFilter" placeholder="Filtrar por parceiro, empresa ou CNPJ..." onkeyup="filterTable()">
+                </div>
+                <div id="generalTableContainer"></div>
+            </div>
         </div>
+
         <div id="page-data" class="page hidden">
             <div id="partnerSummary"></div>
             <div id="tableContainer"></div>
@@ -86,9 +98,10 @@
 
 <script>
     let partnerDB = {}; 
+    let allRows = [];
     let currentMonth = "";
     
-    document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
+    document.getElementById('uploadBox').onclick = () => document.getElementById('fileInput').click();
 
     document.getElementById('fileInput').onchange = (e) => {
         const file = e.target.files[0];
@@ -98,10 +111,9 @@
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             
-            // Detecta o mês na célula B5
             const titleCell = sheet['B5'] ? sheet['B5'].v : "";
             const match = titleCell.match(/\d{2}\/\d{4}/);
-            currentMonth = match ? match[0] : "Período não identificado";
+            currentMonth = match ? match[0] : "03/2026";
 
             const json = XLSX.utils.sheet_to_json(sheet, { range: 5 });
             processData(json);
@@ -111,22 +123,28 @@
 
     function processData(json) {
         partnerDB = {};
+        allRows = [];
         json.forEach(row => {
             const p = row['PARCEIRO'];
             if (p && p !== '-' && p !== 'PARCEIRO') {
                 if (!partnerDB[p]) partnerDB[p] = [];
                 partnerDB[p].push(row);
+                allRows.push(row);
             }
         });
-        updateSidebar();
+        
+        document.getElementById('uploadBox').classList.add('hidden');
+        document.getElementById('dashboardGeral').classList.remove('hidden');
         document.getElementById('btnDownloadAll').classList.remove('hidden');
         document.getElementById('btnPrint').classList.remove('hidden');
-        alert("Dados processados com sucesso!");
+        
+        updateSidebar();
+        renderGeneralDashboard();
     }
 
     function updateSidebar() {
         const nav = document.getElementById('navLinks');
-        nav.innerHTML = '<div class="nav-item active" id="btn-home" onclick="showPage(\'home\')">🏠 Importar Planilha</div>';
+        nav.innerHTML = '<div class="nav-item active" id="btn-home" onclick="showPage(\'home\')">🏠 Visão Geral</div>';
         Object.keys(partnerDB).sort().forEach(name => {
             const div = document.createElement('div');
             div.className = 'nav-item';
@@ -136,19 +154,55 @@
         });
     }
 
+    function renderGeneralDashboard() {
+        const total = allRows.reduce((s, r) => s + (parseFloat(r['VALOR COMPENSADO']) || 0), 0);
+        
+        document.getElementById('totalGlobalCard').innerHTML = `
+            <div class="summary-card">
+                <div><span style="font-size: 0.8rem; opacity: 0.7;">TOTAL ACUMULADO (TODOS OS PARCEIROS)</span><br><strong>Competência ${currentMonth}</strong></div>
+                <div class="summary-value">R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            </div>`;
+
+        let html = `<table id="mainTable"><thead><tr><th>Parceiro</th><th>Razão Social</th><th>CNPJ</th><th>Comp.</th><th>Imposto</th><th>Valor</th></tr></thead><tbody>`;
+        allRows.forEach(row => {
+            html += `<tr>
+                <td style="color: var(--accent)">${row['PARCEIRO']}</td>
+                <td>${row['RAZÃO SOCIAL']}</td>
+                <td>${row['CNPJ'] || ''}</td>
+                <td>${row['COMPETENCIA'] || ''}</td>
+                <td>${row['IMPOSTO COMPENSADO'] || ''}</td>
+                <td>R$ ${(parseFloat(row['VALOR COMPENSADO']) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            </tr>`;
+        });
+        document.getElementById('generalTableContainer').innerHTML = html + '</tbody></table>';
+    }
+
+    function filterTable() {
+        const input = document.getElementById("mainFilter");
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("mainTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            const textContent = tr[i].textContent || tr[i].innerText;
+            tr[i].style.display = textContent.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+        }
+    }
+
     function renderPartnerView(name) {
         showPage('data');
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.getElementById('pageTitle').innerText = name;
+        
         const data = partnerDB[name];
         const totalGeral = data.reduce((s, r) => s + (parseFloat(r['VALOR COMPENSADO']) || 0), 0);
         
-        document.getElementById('pageTitle').innerText = name;
         document.getElementById('partnerSummary').innerHTML = `
             <div class="summary-card">
-                <div><span style="font-size: 0.8rem; opacity: 0.7;">TOTAL GERAL - ${currentMonth}</span><br><strong>${name}</strong></div>
+                <div><span style="font-size: 0.8rem; opacity: 0.7;">TOTAL PARCEIRO</span><br><strong>${name}</strong></div>
                 <div class="summary-value">R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
             </div>`;
 
-        // Agrupamento para somatório por Empresa (Razão Social)
         const grouped = data.reduce((acc, curr) => {
             const key = curr['RAZÃO SOCIAL'];
             if (!acc[key]) acc[key] = { rows: [], total: 0 };
@@ -158,7 +212,6 @@
         }, {});
 
         let html = `<table><thead><tr><th>Razão Social</th><th>CNPJ</th><th>Comp.</th><th>Imposto</th><th>Valor Unitário</th><th>Subtotal Empresa</th></tr></thead><tbody>`;
-        
         Object.keys(grouped).forEach(empresa => {
             const info = grouped[empresa];
             info.rows.forEach((row, index) => {
@@ -179,19 +232,17 @@
     function showPage(p) {
         document.querySelectorAll('.page').forEach(pg => pg.classList.add('hidden'));
         document.getElementById('page-' + p).classList.remove('hidden');
+        if(p === 'home') {
+            document.getElementById('pageTitle').innerText = "Visão Geral";
+            document.getElementById('btn-home').classList.add('active');
+        }
     }
 
     function exportExcelFullLayout() {
         const wb = XLSX.utils.book_new();
-        
         Object.keys(partnerDB).forEach(partner => {
             const data = partnerDB[partner];
-            const wsData = [
-                [], [], [], [], 
-                ["", `RESUMO - DCOMP's - ${currentMonth} (${partner})`], 
-                ["", "PARCEIRO", "RAZÃO SOCIAL", "CNPJ", "COMPETENCIA", "IMPOSTO COMPENSADO", "VALOR COMPENSADO", "TOTAL POR EMPRESA"]
-            ];
-
+            const wsData = [[],[],[],[], ["", `RESUMO - DCOMP's - ${currentMonth} (${partner})`], ["", "PARCEIRO", "RAZÃO SOCIAL", "CNPJ", "COMPETENCIA", "IMPOSTO COMPENSADO", "VALOR COMPENSADO", "TOTAL POR EMPRESA"]];
             const grouped = data.reduce((acc, curr) => {
                 const key = curr['CNPJ'];
                 if (!acc[key]) acc[key] = { rows: [], total: 0 };
@@ -199,28 +250,16 @@
                 acc[key].total += (parseFloat(curr['VALOR COMPENSADO']) || 0);
                 return acc;
             }, {});
-
             Object.keys(grouped).forEach(cnpj => {
                 const info = grouped[cnpj];
                 info.rows.forEach((row, index) => {
-                    wsData.push([
-                        "", 
-                        row.PARCEIRO, 
-                        row['RAZÃO SOCIAL'], 
-                        row.CNPJ, 
-                        row.COMPETENCIA, 
-                        row['IMPOSTO COMPENSADO'], 
-                        parseFloat(row['VALOR COMPENSADO']) || 0,
-                        index === 0 ? info.total : "" // Total por empresa na primeira linha do grupo
-                    ]);
+                    wsData.push(["", row.PARCEIRO, row['RAZÃO SOCIAL'], row.CNPJ, row.COMPETENCIA, row['IMPOSTO COMPENSADO'], parseFloat(row['VALOR COMPENSADO']) || 0, index === 0 ? info.total : ""]);
                 });
             });
-
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, partner.substring(0, 31));
         });
-
-        XLSX.writeFile(wb, `RELATORIO_DCOMP_AZDEV_${currentMonth.replace('/','_')}.xlsx`);
+        XLSX.writeFile(wb, `RELATORIO_DCOMP.xlsx`);
     }
 </script>
 </body>
